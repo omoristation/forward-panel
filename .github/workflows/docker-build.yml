@@ -1,4 +1,4 @@
-name: Build and Push Vue or Spring Boot Images
+name: Build Vue and Spring Boot Projects
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
 jobs:
   build-vue:
     if: contains(github.event.head_commit.message, '[skip vue]') == false
-    name: Build & Push Vue Frontend
+    name: Build Vue Frontend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -31,29 +31,16 @@ jobs:
         with:
           node-version: 20
 
-      - name: Set up Docker Buildx
+      - name: Install and Build Vue Project
         if: steps.vue-changes.outputs.vue == 'true'
-        uses: docker/setup-buildx-action@v2
-
-      - name: Log in to DockerHub
-        if: steps.vue-changes.outputs.vue == 'true'
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
-
-      - name: Build and push Vue multi-arch image
-        if: steps.vue-changes.outputs.vue == 'true'
+        working-directory: ./vue-frontend
         run: |
-          docker buildx build \
-            --platform linux/amd64,linux/arm64 \
-            --push \
-            -t bqlpfy/vue-frontend \
-            ./vue-frontend
+          npm install
+          npm run build
 
   build-java:
     if: contains(github.event.head_commit.message, '[skip java]') == false
-    name: Build & Push Spring Boot Backend
+    name: Build Spring Boot Backend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -86,22 +73,9 @@ jobs:
         working-directory: ./springboot-backend
         run: mvn clean package -DskipTests
 
-      - name: Set up Docker Buildx
+      - name: Upload Spring Boot JAR as Artifact
         if: steps.java-changes.outputs.java == 'true'
-        uses: docker/setup-buildx-action@v2
-
-      - name: Log in to DockerHub
-        if: steps.java-changes.outputs.java == 'true'
-        uses: docker/login-action@v2
+        uses: actions/upload-artifact@v4
         with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
-
-      - name: Build and push Java multi-arch image
-        if: steps.java-changes.outputs.java == 'true'
-        run: |
-          docker buildx build \
-            --platform linux/amd64,linux/arm64 \
-            --push \
-            -t bqlpfy/springboot-backend \
-            ./springboot-backend
+          name: springboot-backend-jar
+          path: springboot-backend/target/admin-0.0.1-SNAPSHOT.jar
